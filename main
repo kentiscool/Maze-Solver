@@ -1,0 +1,209 @@
+#include <iostream>
+#include <random>
+#include <time.h>
+#include <queue>
+using namespace std;
+
+class Node {
+	//Setting the neighbors in this way might seem inefficient,
+	//but it makes generating a maze much easier.
+    public:
+        Node * left = nullptr;
+        Node * right = nullptr;
+        Node * up = nullptr;
+        Node * down = nullptr;
+        Node * closestPath = nullptr;
+        bool end = false;
+        bool blockage = true;
+        int weight = 0;
+        bool isVisited = false;
+};
+
+void generateMaze(Node* array[10][10], int random[], Node* start, int a) {
+
+    start->blockage = false;
+    start ->isVisited =true;
+    if (start->down != nullptr) {
+
+        int randomNumber = random[a];
+        int r = a;
+        for (int i = 0; i <=randomNumber; i++) {
+            randomNumber = random[r];
+            r = r+1;
+            if (randomNumber ==1 && start->right != nullptr && !start->right->isVisited) {
+                start->right->blockage = false;
+				generateMaze(array, random, start->right, r);
+            }
+            else if (randomNumber ==2 && start->down != nullptr && !start->down->isVisited) {
+                start->down->blockage = false;
+				generateMaze(array, random, start->down, r);
+            }
+            else if (randomNumber ==3 && start->left != nullptr && !start->left->isVisited) {
+                start->left->blockage = false;
+				generateMaze(array, random, start->left, r);
+            }
+        }
+    }
+
+}
+
+void unVisit(Node* array[10][10]) {
+    for (int y = 0; y <10; y++) {
+        for (int x =0; x< 10; x++) {
+            array[y][x]->isVisited = false;
+        }
+    }
+
+}
+
+void print(Node* array[10][10], Node* destination) {
+    Node * current = destination;
+    unVisit(array);
+
+	while(current != nullptr) {
+		current->isVisited = true;
+		current = current->closestPath;
+	}
+
+	for (int y = 0; y <10; y++) {
+		for (int x =0; x < 10; x++) {
+			if (array[y][x]!=nullptr) {
+				if (array[y][x]->blockage) {
+					cout <<" # ";
+				}else{
+					if (array[y][x]->isVisited) {
+						cout << " * ";
+					}else {
+						cout << "   ";
+					}
+				}
+			}
+		}
+	cout <<endl;
+	}
+
+cout << endl;
+
+}
+
+void initilizeGraph(Node* array[10][10], Node * destination) {
+    int rows = 10;
+    int col = 10;
+
+    for (int y = 0; y <10; y++) {
+        for (int x =0; x< 10; x++) {
+            Node * newNode = new Node;
+            array[y][x] = newNode;
+        }
+    }
+
+    array[0][0]->right =array[0][1];
+	array[0][0]->down = array[1][0];
+	array[0][col-1]->left=array[0][col-2];
+	array[0][col-1]->down = array[1][col-1];
+
+	//First Row
+	for (int i = 1; i < col-1; i++) {
+		array[0][i]->left=array[0][i-1];
+		array[0][i]->right=array[0][i+1];
+		array[0][i]->down=array[1][i];
+
+	}
+
+	//Last Row
+	for (int i = 1; i < col-1; i++) {
+		array[rows-1][i]->left=array[0][i-1];
+		array[rows-1][i]->right=array[0][i+1];
+		array[rows-1][i]->up=array[rows-2][i];
+
+	}
+
+	for (int i = 0; i < col; i++) {
+			array[rows-1][i]->down=destination;
+		}
+
+
+	for (int y = 1; y < rows-1; y++) {
+		array[y][0]->right = array[y][1];
+		array[y][0]->up =array[y-1][1];
+		array[y][0]->down =array[y+1][0];
+
+		array[y][col-1]->left=array[y][col-2];
+		array[y][col-1]->up=array[y-1][col-1];
+		array[y][col-1]->down=array[y+1][col-1];
+
+		for (int x = 1; x < col-1; x++) {
+			array[y][x]->left=array[y][x-1];
+			array[y][x]->right=array[y][x+1];
+			array[y][x]->up=array[y-1][x];
+			array[y][x]->down =array[y+1][x];
+		}
+	}
+}
+
+void Djikstras(Node* nodes[10][10], Node* start) {
+	// This is my custom implementation of Djikstra's algorithm,
+	// it might seem a little different but the core of it is
+	// very much still inspired by Djikstra's
+	start->weight = -100;
+	unVisit(nodes);
+	queue<Node*> q;
+	q.push(start);
+
+	while (!q.empty()) {
+		Node * current = q.front();
+		if (current!=nullptr) {
+			q.pop();
+			Node* Neighbours[] = {current->up,current->down,current->left,current->right};
+			for (int i = 0; i < 4; i++) {
+				Node* n = Neighbours[i];
+				if ( n != nullptr && !n->blockage &&
+				   ( n->weight== 0 || n->weight > 1 + current->weight) ) {
+					n->closestPath = current;
+					n->weight = 1 + current->weight;
+					q.push(n);
+				}
+			}
+		}
+	}
+
+}
+
+int main()
+{
+    int random[200];
+    Node* array[10][10];
+
+    // The Destination node can be set anywhere, but this code is built to
+    // find its way down the maze.
+    Node* destination = new Node;
+    destination->blockage = false;
+
+    // Generate array of random numbers to be used for generating maze
+    srand((unsigned)time(0));
+    for (int i = 0; i < 200; i++) {
+	   random[i] = rand() %3+1;
+    }
+
+    // Connect nodes in the array to form a graph.
+    initilizeGraph(array, destination);
+
+    generateMaze(array, random, array[0][0], 0);
+    cout << "Maze generated!!!" << endl;
+    cout << "<==============================>"<<endl;
+    print(array,destination);
+    cout << "<==============================>"<<endl;
+
+    Node* start = array[0][0];
+    Djikstras(array, start);
+
+    if (destination->closestPath != nullptr) {
+    	cout << "Maze solved!!!" << endl;
+    	print(array,destination);
+    	cout << "<==============================>"<<endl;
+    }else {
+    	cout << "Maze has no possible path that leads to the bottom!!!";
+    }
+
+    return 0;
+}
